@@ -22,13 +22,31 @@ export interface RoleSpec {
   /** Slots the section holds. Mirrors role_capacity() in SQL. */
   capacity: number;
   /**
-   * Most cards to put on one row before wrapping.
+   * Seniority. Somebody may fill a slot at or below their own rank, never above.
    *
-   * Not the same as capacity: five assistants across a portrait tablet gives
-   * each photo about 150px, which is unreadable from the far end of a corridor.
-   * Three to a row and wrap is legible; the section grows a row instead.
+   * Mirrors role_rank() in 0004_role_hierarchy.sql. Deliberately separate from
+   * `capacity`: one is how many slots the board draws, the other is who may
+   * stand in them.
    */
-  perRow: number;
+  rank: number;
+  /**
+   * The widest one card in this section may be, as a share of the row.
+   *
+   * A section is always a single row, so without a cap a lone card stretches the
+   * full width of the board and `object-fit: cover` crops its photograph to a
+   * letterbox strip of forehead. The cap keeps every card roughly portrait
+   * however few people are on: one senior carer takes half the row, one care
+   * assistant a third, and the remainder stays empty.
+   *
+   * It binds only when a section is emptier than its capacity. Five care
+   * assistants each take a fifth of the row on their own, well under the cap.
+   *
+   * Even the Nurse in Charge is capped, at two thirds — a card spanning the
+   * whole width of a board is not a portrait, it is a panorama, and the face
+   * disappears out of the top and bottom of it. Two thirds still leaves it far
+   * and away the largest card on the wall.
+   */
+  maxCardWidth: string;
   /**
    * Share of leftover vertical space this section takes.
    *
@@ -44,30 +62,61 @@ export const ROLE_SPECS: Record<Role, RoleSpec> = {
     label: "Nurse in Charge",
     singular: "Nurse in Charge",
     capacity: 1,
-    perRow: 1,
+    rank: 3,
+    maxCardWidth: "66%",
     weight: 5,
   },
   SENIOR_CARER: {
     label: "Senior Carers",
     singular: "Senior Carer",
     capacity: 3,
-    perRow: 3,
+    rank: 2,
+    maxCardWidth: "48%",
     weight: 3,
   },
   CARE_ASSISTANT: {
     label: "Care Assistants",
     singular: "Care Assistant",
     capacity: 5,
-    perRow: 3,
+    rank: 1,
+    maxCardWidth: "32%",
     weight: 4,
   },
 };
+
+/**
+ * May this person stand in a slot for `slotRole`?
+ *
+ * Cover flows downward only: a senior carer taking a care assistant shift and a
+ * nurse taking a senior carer shift are ordinary; a senior carer in the Nurse in
+ * Charge slot would assert clinical accountability they do not hold.
+ *
+ * The database enforces the same rule in set_slot_at(), which is what makes it
+ * true rather than merely offered — see 0004_role_hierarchy.sql. This copy
+ * exists so the pickers can filter without a round trip.
+ */
+export function canFill(staffRole: Role, slotRole: Role): boolean {
+  return ROLE_SPECS[staffRole].rank >= ROLE_SPECS[slotRole].rank;
+}
+
+/** True when they are covering from a more senior role rather than their own. */
+export function isCovering(staffRole: Role, slotRole: Role): boolean {
+  return staffRole !== slotRole;
+}
 
 export function isRole(value: unknown): value is Role {
   return typeof value === "string" && (ROLES as readonly string[]).includes(value);
 }
 
-/** Heading text that reads correctly when a section holds exactly one person. */
+/**
+ * Heading text that reads correctly when a section holds exactly one person.
+ *
+ * "Senior Carer" rather than "Senior Carers" when there is one. The board shows
+ * no counts — a visitor reading "3 of 5 care assistants" reads it as
+ * understaffed, when a full complement is the exception rather than the
+ * expectation — so the heading is the only thing carrying number, and it should
+ * at least agree with what is underneath it.
+ */
 export function sectionHeading(role: Role, filled: number): string {
   const spec = ROLE_SPECS[role];
   return filled === 1 ? spec.singular : spec.label;

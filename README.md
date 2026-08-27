@@ -11,14 +11,21 @@ behave like one system.
 
 ## What it does
 
-**On the wall** — `/board/<floor>` on a tablet in portrait, in kiosk mode.
-Photographs and names in three bands, largest at the top. The board shows only
-the people who are actually on: a floor running one nurse and two assistants
-gets three large photographs filling the screen, not three small ones above a
-row of empty boxes. It never scrolls.
+**On the wall** — `/board/<floor>` on a tablet in portrait, in kiosk mode. The
+centre's logo, the floor, and then photographs and names in three bands, largest
+at the top. Nothing else: no clock, no date, no counts. A visitor reading "3 of
+5 care assistants" reads it as understaffed, when a full complement is the
+exception rather than the expectation — the board says who is on, not who is
+missing.
+
+The board shows only the people who are actually on: a floor running one nurse
+and two assistants gets three large photographs filling the screen, not three
+small ones above a row of empty boxes. Each band is always a single row, and it
+never scrolls.
 
 At 08:00 and 20:00 it changes to the other shift by itself, and the whole screen
-shifts from maroon to indigo so a stale board is obvious from the end of the
+shifts from maroon to indigo — which is how the shift reads at a glance now that
+there is no badge, and how a stale board becomes obvious from the end of the
 corridor.
 
 **At handover** — tap any photograph, enter the PIN, and the board unlocks for
@@ -49,8 +56,9 @@ harbour-notice/
 │   ├── 0001_init.sql            Schema, RLS, and every RPC. Read this first —
 │   │                            the design decisions are documented in it.
 │   ├── 0002_storage.sql         The private staff-photos bucket.
-│   └── 0003_role_restriction.sql  A slot only holds somebody who holds that
-│                                role. Supersedes a decision made in 0001.
+│   ├── 0003_role_restriction.sql  A slot only holds somebody who holds that
+│   │                            role. Supersedes a decision made in 0001.
+│   └── 0004_role_hierarchy.sql  Refines 0003: cover flows downward, never up.
 ├── scripts/hash-pin.ts          Set the very first PIN without a browser.
 └── src/
     ├── proxy.ts                 Session refresh + /admin redirects (Next 16
@@ -93,10 +101,12 @@ harbour-notice/
 Four tables. The full reasoning is in `supabase/migrations/0001_init.sql`.
 
 - **`floors`** — one tablet, one board, one floor. `slug` is the URL.
-- **`staff`** — name, role, photo, `is_active`. The role decides which slots the
-  person can fill, and it is enforced in `set_slot_at()` rather than only in the
-  UI: a board asserting that a care assistant is Nurse in Charge is stating
-  something untrue about who is clinically accountable for the floor.
+- **`staff`** — name, role, photo, `is_active`. Roles are ranked (Nurse >
+  Senior Carer > Care Assistant) and somebody may fill a slot at or below their
+  own rank: cover flows downward, never upward. Enforced in `set_slot_at()`
+  rather than only in the UI, because a board asserting that a care assistant is
+  Nurse in Charge states something untrue about who is clinically accountable for
+  the floor.
 - **`shift_assignments`** — `(floor, shift_date, shift, role, slot_index) →
   staff`. This is both the rota and the live board.
 - **`app_settings`** — one row, holding the scrypt hash of the swap PIN.

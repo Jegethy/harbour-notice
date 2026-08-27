@@ -2,19 +2,24 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { SlotTarget } from "@/components/board/BoardSection";
-import { initialsOf, roleNoun } from "@/lib/board/roles";
+import { initialsOf, isCovering, roleNoun } from "@/lib/board/roles";
 import { photoUrl } from "@/lib/board/photo";
+import type { Role } from "@/lib/board/roles";
 import type { AvailableStaffRow } from "@/lib/types/database";
 
 /**
  * Pick who is standing in one slot.
  *
- * Opens on the section that was tapped and lists the people who hold that role —
- * and nobody else. A board saying a care assistant is Nurse in Charge is stating
- * something untrue about who is clinically accountable for the floor, so the
- * list simply does not offer it. The filtering happens in available_staff(), so
- * a tablet is never sent the rest of the staff roll, and set_slot_at() refuses a
- * mismatch regardless of what asks. See 0003_role_restriction.sql.
+ * Opens on the section that was tapped and lists everyone who may fill it:
+ * people whose own role it is first, then anyone covering from a more senior
+ * one. Cover flows downward only — a senior carer takes a care assistant shift,
+ * a nurse takes a senior carer shift, and nobody stands in the Nurse in Charge
+ * slot who is not a nurse, because that would assert clinical accountability
+ * they do not hold.
+ *
+ * The filtering happens in available_staff(), so a tablet is never sent the rest
+ * of the staff roll, and set_slot_at() refuses upward cover regardless of what
+ * asks. See 0004_role_hierarchy.sql.
  *
  * This outer component owns nothing but the <dialog>. Everything that has to be
  * fresh for each slot — the fetched list, the error, the in-flight save — lives
@@ -201,12 +206,13 @@ function SwapBody({
             // role is missing, and that it is fixed in the admin panel rather
             // than on this screen.
             <p className="py-8 text-center text-[var(--board-ink-dim)]">
-              Nobody on the staff list is a {roleNoun(target.role).toLowerCase()}. Add one
-              in the admin panel.
+              Nobody on the staff list can cover as{" "}
+              {roleNoun(target.role).toLowerCase()}. Add someone in the admin panel.
             </p>
           ) : (
             <PersonGrid
               people={staff}
+              slotRole={target.role}
               saving={saving}
               currentId={currentId}
               onChoose={choose}
@@ -239,11 +245,13 @@ function SwapBody({
 
 function PersonGrid({
   people,
+  slotRole,
   saving,
   currentId,
   onChoose,
 }: {
   people: AvailableStaffRow[];
+  slotRole: Role;
   saving: string | null;
   currentId: string | null;
   onChoose: (staffId: string) => void;
@@ -281,6 +289,11 @@ function PersonGrid({
                 <Badge>Move from another section</Badge>
               ) : person.on_other_floor ? (
                 <Badge>On {person.on_other_floor}</Badge>
+              ) : isCovering(person.role, slotRole) ? (
+                /* Their own role, named, because putting a nurse in a senior
+                   carer slot should be a decision rather than a mis-tap on a
+                   list where everybody looks interchangeable. */
+                <Badge>{roleNoun(person.role)} covering</Badge>
               ) : null}
             </button>
           </li>

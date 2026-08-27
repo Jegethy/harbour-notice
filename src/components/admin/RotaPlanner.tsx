@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { copyPreviousShiftAction, setRotaSlotAction } from "@/app/admin/actions";
-import { ROLES, ROLE_SPECS, type Role } from "@/lib/board/roles";
+import { ROLES, ROLE_SPECS, canFill, isCovering, type Role } from "@/lib/board/roles";
 import { formatShiftDate, type Shift } from "@/lib/board/shift";
 import type { RotaSlotRow, StaffRow } from "@/lib/types/database";
 
@@ -21,12 +21,13 @@ import type { RotaSlotRow, StaffRow } from "@/lib/types/database";
  * the board's rule. Here the empty slots are the work: an administrator is
  * looking for the gaps, where somebody in a corridor is looking for a face.
  *
- * Each dropdown offers only people who hold that role, and names the role beside
- * every person so the pairing is checkable at a glance rather than by memory.
- * set_slot_at() refuses a mismatch too, so this is a courtesy rather than the
- * enforcement — see 0003_role_restriction.sql. Assignments made before that rule
- * existed stay visible, flagged, and selectable, so they can be corrected rather
- * than silently dropped the next time something else on the shift is edited.
+ * Each dropdown offers the people who may fill that slot — their own role, or a
+ * more senior one covering downward — and names the role beside every person, so
+ * the pairing is checkable at a glance rather than by memory. set_slot_at()
+ * applies the same rule, so this is a courtesy rather than the enforcement; see
+ * 0004_role_hierarchy.sql. Anything recorded before that rule stays visible,
+ * flagged, and selectable, so it can be corrected rather than silently dropped
+ * the next time something else on the shift is edited.
  */
 export function RotaPlanner({
   floors,
@@ -206,7 +207,7 @@ export function RotaPlanner({
       ) : (
         <div className="flex flex-col gap-5">
           {ROLES.map((role) => {
-            const eligible = staff.filter((person) => person.role === role);
+            const eligible = staff.filter((person) => canFill(person.role, role));
 
             return (
               <fieldset
@@ -219,9 +220,9 @@ export function RotaPlanner({
 
                 {eligible.length === 0 ? (
                   <p className="mb-3 rounded-lg bg-brand-accent/5 px-3 py-2 text-sm font-semibold text-brand-accent">
-                    Nobody on the staff list is a{" "}
-                    {ROLE_SPECS[role].singular.toLowerCase()}. Add one under Staff before
-                    rostering this section.
+                    Nobody on the staff list can cover as{" "}
+                    {ROLE_SPECS[role].singular.toLowerCase()}. Add someone under Staff
+                    before rostering this section.
                   </p>
                 ) : null}
 
@@ -233,7 +234,7 @@ export function RotaPlanner({
 
                     // Predates the role rule: somebody is standing in a slot they
                     // do not hold. Flagged rather than quietly dropped.
-                    const mismatched = Boolean(filled && filled.role !== role);
+                    const mismatched = Boolean(filled && !canFill(filled.role, role));
 
                     return (
                       <label key={slotIndex} className="flex flex-col gap-1">
@@ -280,6 +281,7 @@ export function RotaPlanner({
                             return (
                               <option key={person.id} value={person.id}>
                                 {person.full_name} · {ROLE_SPECS[person.role].singular}
+                                {isCovering(person.role, role) ? " (covering)" : ""}
                                 {elsewhere && !isHere ? " · already on this shift" : ""}
                               </option>
                             );
@@ -289,8 +291,9 @@ export function RotaPlanner({
                         {mismatched && filled ? (
                           <span className="text-xs font-semibold text-brand-accent">
                             {filled.full_name} is a{" "}
-                            {ROLE_SPECS[filled.role].singular.toLowerCase()}, not a{" "}
-                            {ROLE_SPECS[role].singular.toLowerCase()}. Pick a replacement.
+                            {ROLE_SPECS[filled.role].singular.toLowerCase()}, which cannot
+                            cover as {ROLE_SPECS[role].singular.toLowerCase()}. Pick a
+                            replacement.
                           </span>
                         ) : null}
                       </label>

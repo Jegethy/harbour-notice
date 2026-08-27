@@ -7,10 +7,11 @@ Work through this before the first tablet goes on a wall.
 - [ ] **Apply every migration** in `supabase/migrations/`, in filename order
       (`supabase db push`, or paste each into the SQL Editor). All are
       idempotent and safe to re-run.
-- [ ] **Check for assignments that break the role rule.** 0003 stopped a slot
-      holding somebody who does not hold that role, but deliberately did not
-      rewrite existing rows — who was on duty last Tuesday is a record, not a
-      mistake to tidy up. Anything current or future is worth correcting:
+- [ ] **Check for assignments that break the role rule.** A slot may only hold
+      somebody of that role or more senior (0003, refined by 0004 — cover flows
+      downward, never upward). Neither migration rewrote existing rows: who was
+      on duty last Tuesday is a record, not a mistake to tidy up. Anything
+      current or future is worth correcting:
       ```
       select * from mismatched_assignments where is_current_or_future;
       ```
@@ -45,6 +46,12 @@ Work through this before the first tablet goes on a wall.
       yet" — not three empty sections.
 - [ ] A floor with one nurse and two assistants fills the screen, with no
       scrolling and no empty placeholder tiles.
+- [ ] **Five care assistants stay on one row** and do not wrap.
+- [ ] Nothing at the top of the board but the logo and the floor name — no
+      clock, no shift badge, no counts.
+- [ ] On a wide desktop window the board renders as a centred portrait panel
+      rather than stretching. That panel is what the tablet will show, so it is
+      a true preview.
 - [ ] Tapping a photograph asks for the PIN, and a correct PIN drops straight
       into the swap for **that** person, not back to the board.
 - [ ] A wrong PIN says so and clears the pad. Eight wrong PINs in a quarter hour

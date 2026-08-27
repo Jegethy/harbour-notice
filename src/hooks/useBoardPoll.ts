@@ -18,8 +18,6 @@ export type BoardConnection = "loading" | "live" | "stale";
 export interface BoardState {
   snapshot: BoardSnapshot;
   connection: BoardConnection;
-  /** Server time, ticking locally between polls. Not the tablet's own clock. */
-  now: Date;
   /** Seconds left on the editing window, counted down locally. */
   unlockedSeconds: number;
   refresh: () => Promise<void>;
@@ -40,12 +38,10 @@ interface Payload extends BoardSnapshot {
  * day is a few hundred bytes an hour, which is why the interval can be short
  * enough to feel immediate without anyone having to think about load.
  *
- * The clock is driven from the server's `at`, not the tablet's own time. A wall
- * tablet nobody has logged into for a year is exactly the device whose clock has
- * drifted, and a board that displays 07:52 while the server has already handed
- * over to the day shift is worse than one with no clock at all. The offset is
- * measured on each full response and applied to a local tick, so it survives a
- * run of 304s.
+ * The server's clock, not the tablet's, decides when the handover alarm below
+ * is set for. A wall tablet nobody has logged into for a year is exactly the
+ * device whose clock has drifted, so the offset between the two is measured on
+ * every full response and the alarm is set against that.
  *
  * The handover alarm is a scheduling refinement rather than a correctness
  * mechanism. Without it the 20:00 changeover would appear whenever the poll
@@ -57,14 +53,6 @@ export function useBoardPoll(floor: string, initial: BoardSnapshot): BoardState 
   const [snapshot, setSnapshot] = useState(initial);
   const [connection, setConnection] = useState<BoardConnection>("loading");
   const [unlockedSeconds, setUnlockedSeconds] = useState(0);
-
-  /**
-   * The displayed clock, held in state rather than computed while rendering.
-   *
-   * Seeded from the server's own timestamp, so the very first paint is already
-   * showing server time rather than the tablet's.
-   */
-  const [now, setNow] = useState(() => new Date(initial.at));
 
   /** Server clock minus this device's clock, in ms. Written only from effects. */
   const offsetRef = useRef(0);
@@ -93,7 +81,6 @@ export function useBoardPoll(floor: string, initial: BoardSnapshot): BoardState 
 
       setSnapshot(payload);
       setConnection("live");
-      setNow(new Date(payload.at));
 
       // Only trust the server's countdown from a full response. A 304 says
       // nothing about the editing window, so a zero here is the one
@@ -129,14 +116,20 @@ export function useBoardPoll(floor: string, initial: BoardSnapshot): BoardState 
     return () => window.clearTimeout(id);
   }, [refresh, snapshot.shift, snapshot.shift_date]);
 
-  // One second tick, driving both the clock and the unlock countdown.
+  // One second tick, for the unlock countdown only — and only while there is a
+  // countdown to run. The board is displayed continuously for months at a time;
+  // a timer that re-renders every face on the wall once a second in order to
+  // change nothing is not something to leave running.
+  const countingDown = unlockedSeconds > 0;
+
   useEffect(() => {
+    if (!countingDown) return;
+
     const id = window.setInterval(() => {
-      setNow(new Date(Date.now() + offsetRef.current));
       setUnlockedSeconds((seconds) => (seconds > 0 ? seconds - 1 : 0));
     }, 1000);
     return () => window.clearInterval(id);
-  }, []);
+  }, [countingDown]);
 
   // Come back from sleep with something current. A tablet that has been dark
   // overnight would otherwise show the previous shift until the next poll.
@@ -152,5 +145,5 @@ export function useBoardPoll(floor: string, initial: BoardSnapshot): BoardState 
     };
   }, [refresh]);
 
-  return { snapshot, connection, now, unlockedSeconds, refresh, setUnlockedSeconds };
+  return { snapshot, connection, unlockedSeconds, refresh, setUnlockedSeconds };
 }

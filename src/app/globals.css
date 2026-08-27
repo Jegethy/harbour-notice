@@ -91,10 +91,41 @@ body[data-board] * {
 /*
  * A name that is too long for its card shrinks rather than wrapping to three
  * lines or being clipped. `cqw` is a share of the card's own width, so the
- * same rule works for the full-width nurse card and a third-width assistant.
+ * same rule works for the full-width nurse card and a fifth-width assistant.
  */
 .name-fit {
   container-type: inline-size;
+}
+
+/*
+ * One section of the board: always a single row, always centred.
+ *
+ * Cards divide the row equally, except that none may exceed `--card-max` of its
+ * width. That upper bound is the whole trick. Without it a section holding one
+ * person stretches that card across the full width of the board, and
+ * `object-fit: cover` crops the photograph down to a letterbox strip of forehead
+ * — which is exactly what a wide desktop window did to every face on it.
+ *
+ * With it, a lone senior carer takes half the row and a lone care assistant a
+ * third; the remainder stays empty and the cards stay roughly portrait. Once a
+ * section holds enough people the cap stops binding and they simply share the
+ * row. A tall, narrow crop is fine — it is a portrait. A wide one is not.
+ */
+.board-row {
+  --row-gap: 0.5rem;
+  gap: var(--row-gap);
+}
+
+@media (min-width: 640px) {
+  .board-row {
+    --row-gap: 0.75rem;
+  }
+}
+
+.board-row > * {
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: var(--card-max);
 }
 
 @keyframes board-pop {

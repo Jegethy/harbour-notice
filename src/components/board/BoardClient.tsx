@@ -27,7 +27,7 @@ import type { BoardSnapshot } from "@/lib/types/database";
  */
 export function BoardClient({ initial }: { initial: BoardSnapshot }) {
   const floor = initial.floor.slug;
-  const { snapshot, connection, now, unlockedSeconds, refresh, setUnlockedSeconds } =
+  const { snapshot, connection, unlockedSeconds, refresh, setUnlockedSeconds } =
     useBoardPoll(floor, initial);
 
   const [pinOpen, setPinOpen] = useState(false);
@@ -65,9 +65,11 @@ export function BoardClient({ initial }: { initial: BoardSnapshot }) {
         body: JSON.stringify({ pin }),
       });
 
-      const payload = (await response.json().catch(() => null)) as
-        | { outcome?: string; message?: string; unlocked_seconds?: number }
-        | null;
+      const payload = (await response.json().catch(() => null)) as {
+        outcome?: string;
+        message?: string;
+        unlocked_seconds?: number;
+      } | null;
 
       if (!response.ok || payload?.outcome !== "UNLOCKED") {
         setPinError(payload?.message ?? "That PIN was not recognised.");
@@ -114,77 +116,92 @@ export function BoardClient({ initial }: { initial: BoardSnapshot }) {
 
   return (
     <div
-      className="flex h-dvh w-full flex-col px-3 py-3 sm:px-5 sm:py-4"
+      className="flex h-dvh w-full justify-center"
       // Day and night are the same layout in two palettes. Custom properties
       // rather than conditional classes so every child — cards, modals, the PIN
       // pad — follows the shift without any of them knowing which shift it is.
       style={
         night
-          ? {
+          ? ({
               "--board-bg": "var(--color-night-primary)",
               "--board-surface": "var(--color-night-deep)",
               "--board-surface-2": "var(--color-night-light)",
-              "--board-line": "color-mix(in srgb, var(--color-brand-cream) 22%, transparent)",
+              "--board-line":
+                "color-mix(in srgb, var(--color-brand-cream) 22%, transparent)",
               "--board-ink": "var(--color-brand-cream)",
               "--board-ink-dim": "var(--color-cream-dim)",
               background: "var(--color-night-primary)",
-            } as React.CSSProperties
+            } as React.CSSProperties)
           : ({
               "--board-bg": "var(--color-brand-primary)",
               "--board-surface": "var(--color-brand-deep)",
               "--board-surface-2": "var(--color-brand-light)",
-              "--board-line": "color-mix(in srgb, var(--color-brand-cream) 22%, transparent)",
+              "--board-line":
+                "color-mix(in srgb, var(--color-brand-cream) 22%, transparent)",
               "--board-ink": "var(--color-brand-cream)",
               "--board-ink-dim": "var(--color-cream-dim)",
               background: "var(--color-brand-primary)",
             } as React.CSSProperties)
       }
     >
-      <BoardHeader
-        floorName={snapshot.floor.name}
-        shift={snapshot.shift}
-        now={now}
-        connection={connection}
-        unlockedSeconds={unlockedSeconds}
-        onUnlockRequest={() => askForPin(null)}
-        onLockRequest={() => void lock()}
-      />
+      {/*
+       * The board is a portrait artefact. Left to fill a landscape window every
+       * card becomes a letterbox and `object-fit: cover` crops each photograph
+       * to a strip of forehead — which is what a desktop browser did to it.
+       *
+       * Capping the width against the viewport height keeps the proportions the
+       * tablet will actually show, so a desktop preview is a true preview rather
+       * than a different layout. 0.72 is wider than a typical 10" Android tablet
+       * in portrait (0.625), so the cap does not bind there and the board fills
+       * the wall edge to edge; on an iPad (0.75) it costs a few pixels a side.
+       */}
+      <div
+        className="flex h-full w-full flex-col px-3 py-3 sm:px-5 sm:py-4"
+        style={{ maxWidth: "min(100%, calc(100dvh * 0.72))" }}
+      >
+        <BoardHeader
+          floorName={snapshot.floor.name}
+          connection={connection}
+          unlockedSeconds={unlockedSeconds}
+          onLockRequest={() => void lock()}
+        />
 
-      {empty && !unlocked ? (
-        <EmptyBoard onStart={() => askForPin(null)} />
-      ) : (
-        <div className="flex min-h-0 flex-1 flex-col gap-3 sm:gap-4">
-          {ROLES.map((role) => (
-            <BoardSection
-              key={role}
-              role={role}
-              slots={snapshot.slots.filter((slot) => slot.role === role)}
-              unlocked={unlocked}
-              onSelect={selectSlot}
-            />
-          ))}
-        </div>
-      )}
+        {empty && !unlocked ? (
+          <EmptyBoard onStart={() => askForPin(null)} />
+        ) : (
+          <div className="flex min-h-0 flex-1 flex-col gap-3 sm:gap-4">
+            {ROLES.map((role) => (
+              <BoardSection
+                key={role}
+                role={role}
+                slots={snapshot.slots.filter((slot) => slot.role === role)}
+                unlocked={unlocked}
+                onSelect={selectSlot}
+              />
+            ))}
+          </div>
+        )}
 
-      <PinPad
-        open={pinOpen}
-        pending={pinPending}
-        error={pinError}
-        onSubmit={(pin) => void submitPin(pin)}
-        onCancel={() => {
-          setPinOpen(false);
-          setPendingTarget(null);
-          setPinError(null);
-        }}
-      />
+        <PinPad
+          open={pinOpen}
+          pending={pinPending}
+          error={pinError}
+          onSubmit={(pin) => void submitPin(pin)}
+          onCancel={() => {
+            setPinOpen(false);
+            setPendingTarget(null);
+            setPinError(null);
+          }}
+        />
 
-      <SwapModal
-        floor={floor}
-        target={target}
-        onClose={() => setTarget(null)}
-        onChanged={() => void refresh()}
-        onLocked={handleLocked}
-      />
+        <SwapModal
+          floor={floor}
+          target={target}
+          onClose={() => setTarget(null)}
+          onChanged={() => void refresh()}
+          onLocked={handleLocked}
+        />
+      </div>
     </div>
   );
 }
@@ -203,7 +220,8 @@ function EmptyBoard({ onStart }: { onStart: () => void }) {
         Nobody is recorded on duty for this shift yet
       </p>
       <p className="max-w-md text-balance text-[var(--board-ink-dim)]">
-        Tap below and enter the PIN to add the nurse in charge and the care team.
+        Tap below and enter the PIN to add the nurse in charge and the care
+        team.
       </p>
       <button
         type="button"

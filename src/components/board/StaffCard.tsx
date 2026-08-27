@@ -81,6 +81,9 @@ function Portrait({
 }) {
   const [failed, setFailed] = useState(false);
 
+  // object-position sits at 28% rather than the top: in a card wider than it is
+  // tall, "top" frames hair and background and cuts the face off below. 28% keeps
+  // eyes and mouth in shot whatever shape the card ends up.
   if (!hasPhoto || failed) {
     return (
       <div className="flex h-full w-full items-center justify-center bg-[var(--board-surface-2)]">
@@ -104,7 +107,7 @@ function Portrait({
       src={photoUrl(staffId, photoUpdatedAt)}
       alt=""
       onError={() => setFailed(true)}
-      className="h-full w-full object-cover object-top"
+      className="h-full w-full object-cover object-[center_28%]"
       draggable={false}
     />
   );
