@@ -39,11 +39,23 @@ export default async function SetupPage({ searchParams }: PageProps<"/setup">) {
   const errorCode = typeof params.error === "string" ? params.error : null;
   const error = errorCode ? (ERRORS[errorCode] ?? ERRORS.invalid) : null;
 
+  // This read uses the service-role key, unlike the admin panel, which reads as
+  // the signed-in user. So "the admin panel lists three floors but this screen
+  // says there are none" is the signature of a bad SUPABASE_SERVICE_ROLE_KEY,
+  // not of missing data — which is exactly why the error is kept separate from
+  // the empty case below rather than collapsed into it.
   const supabase = createAdminClient();
-  const { data: floors } = await supabase
+  const { data: floors, error: floorsError } = await supabase
     .from("floors")
     .select("slug, name")
     .order("sort_order");
+
+  if (floorsError) {
+    console.error(
+      "[setup] could not read floors with the service-role key. Check SUPABASE_SERVICE_ROLE_KEY.",
+      floorsError,
+    );
+  }
 
   return (
     <div className="flex h-full flex-col items-center justify-center gap-7 overflow-y-auto bg-brand-primary px-8 py-10 text-center">
@@ -85,7 +97,17 @@ export default async function SetupPage({ searchParams }: PageProps<"/setup">) {
                 </label>
               ))}
 
-              {(floors ?? []).length === 0 ? (
+              {floorsError ? (
+                <p
+                  role="alert"
+                  className="rounded-xl border-2 border-brand-accent bg-brand-deep px-5 py-4 text-left text-base text-brand-cream"
+                >
+                  <strong>The server could not read the floor list.</strong> This is a
+                  server configuration problem, not a missing floor — check
+                  SUPABASE_SERVICE_ROLE_KEY. The administrator can see the details under
+                  Settings, or in the server log.
+                </p>
+              ) : (floors ?? []).length === 0 ? (
                 <p className="rounded-xl border-2 border-cream-dim/40 bg-brand-deep px-5 py-4 text-left text-base text-cream-dim">
                   No floors have been created yet. Add one in the admin panel first.
                 </p>

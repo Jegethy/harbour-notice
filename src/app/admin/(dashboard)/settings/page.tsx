@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { ServerChecks } from "./ServerChecks";
 import { FloorsPanel } from "@/components/admin/FloorsPanel";
 import { PinForm } from "@/components/admin/PinForm";
 import { requireAdmin } from "@/lib/auth";
@@ -25,6 +26,13 @@ export default async function SettingsPage() {
       <header>
         <h1 className="text-2xl font-bold text-brand-primary sm:text-3xl">Settings</h1>
       </header>
+
+      <Panel
+        title="Server checks"
+        description="Whether the server itself can reach Supabase. This uses a different credential from the one that signed you in, so it can fail while this page looks fine."
+      >
+        <ServerChecks />
+      </Panel>
 
       <Panel
         title="Shift swap PIN"

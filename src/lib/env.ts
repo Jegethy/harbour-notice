@@ -13,12 +13,34 @@
  * literal `process.env.NEXT_PUBLIC_X` reference, not on where it sits.
  */
 
+/**
+ * The literal values in .env.local.example.
+ *
+ * A half-filled .env.local is the single most common way this app breaks, and
+ * it breaks confusingly: a placeholder is a non-empty string, so a naive
+ * presence check passes, the app boots, and the failure surfaces much later as
+ * a rejected request that looks like a database problem. Rejecting the
+ * placeholders by name turns that into one legible error at the first call.
+ */
+const PLACEHOLDERS = new Set([
+  "https://your-project-ref.supabase.co",
+  "your-anon-key",
+  "your-service-role-key",
+]);
+
 function required(name: string, value: string | undefined): string {
   if (!value || value.trim() === "") {
     throw new Error(
       `Missing environment variable ${name}. Copy .env.local.example to .env.local and fill it in.`,
     );
   }
+
+  if (PLACEHOLDERS.has(value.trim())) {
+    throw new Error(
+      `${name} is still set to the example placeholder. Replace it with the real value from Supabase (Project Settings -> API).`,
+    );
+  }
+
   return value;
 }
 

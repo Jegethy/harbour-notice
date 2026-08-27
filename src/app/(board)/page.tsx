@@ -28,12 +28,19 @@ export default async function BoardEntryPage() {
   // Development with no BOARD_SETUP_TOKEN set: nothing is paired, so open the
   // first floor rather than making a fresh clone go through pairing.
   const supabase = createAdminClient();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("floors")
     .select("slug")
     .order("sort_order")
     .limit(1)
     .maybeSingle();
+
+  if (error) {
+    console.error(
+      "[board] could not read floors with the service-role key. Check SUPABASE_SERVICE_ROLE_KEY.",
+      error,
+    );
+  }
 
   redirect(data ? `/board/${data.slug}` : "/setup");
 }
