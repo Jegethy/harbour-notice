@@ -9,16 +9,16 @@ import type { AvailableStaffRow } from "@/lib/types/database";
 /**
  * Pick who is standing in one slot.
  *
- * Opens on the section that was tapped and lists the people whose usual role
- * matches, first. Everyone else is behind "Show all staff" rather than absent: a
- * senior carer covering an assistant shift is ordinary, and a board that cannot
- * record it gets worked around within a week. But putting the whole staff list
- * in front of someone at 20:00 when they want one of four assistants is the
- * wrong default, so it starts collapsed.
+ * Opens on the section that was tapped and lists the people who hold that role —
+ * and nobody else. A board saying a care assistant is Nurse in Charge is stating
+ * something untrue about who is clinically accountable for the floor, so the
+ * list simply does not offer it. The filtering happens in available_staff(), so
+ * a tablet is never sent the rest of the staff roll, and set_slot_at() refuses a
+ * mismatch regardless of what asks. See 0003_role_restriction.sql.
  *
  * This outer component owns nothing but the <dialog>. Everything that has to be
- * fresh for each slot — the fetched list, the error, whether the full roll is
- * expanded — lives in SwapBody, which is keyed by the slot and so is remounted
+ * fresh for each slot — the fetched list, the error, the in-flight save — lives
+ * in SwapBody, which is keyed by the slot and so is remounted
  * rather than reset. Resetting that state from an effect watching `target` is
  * the alternative, and it is a cascading render that briefly shows the previous
  * slot's list under the new slot's heading.
@@ -87,7 +87,6 @@ function SwapBody({
   const [staff, setStaff] = useState<AvailableStaffRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState<string | null>(null);
-  const [showAll, setShowAll] = useState(false);
 
   const role = target.role;
 
@@ -157,8 +156,6 @@ function SwapBody({
     }
   }
 
-  const matching = staff?.filter((person) => person.matches_role) ?? [];
-  const others = staff?.filter((person) => !person.matches_role) ?? [];
   const currentId = target.current?.staff_id ?? null;
 
   return (
@@ -199,45 +196,22 @@ function SwapBody({
         ) : null}
 
         {staff !== null ? (
-          <>
-            {matching.length === 0 && others.length === 0 ? (
-              <p className="py-8 text-center text-[var(--board-ink-dim)]">
-                Nobody has been added to the staff list yet.
-              </p>
-            ) : null}
-
+          staff.length === 0 ? (
+            // Distinguished from "no staff at all": the actionable fact is which
+            // role is missing, and that it is fixed in the admin panel rather
+            // than on this screen.
+            <p className="py-8 text-center text-[var(--board-ink-dim)]">
+              Nobody on the staff list is a {roleNoun(target.role).toLowerCase()}. Add one
+              in the admin panel.
+            </p>
+          ) : (
             <PersonGrid
-              people={matching}
+              people={staff}
               saving={saving}
               currentId={currentId}
               onChoose={choose}
             />
-
-            {others.length > 0 ? (
-              showAll ? (
-                <>
-                  <h3 className="mb-3 mt-6 text-xs font-bold uppercase tracking-[0.12em] text-[var(--board-ink-dim)]">
-                    Other staff
-                  </h3>
-                  <PersonGrid
-                    people={others}
-                    saving={saving}
-                    currentId={currentId}
-                    onChoose={choose}
-                    showRole
-                  />
-                </>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setShowAll(true)}
-                  className="mt-5 w-full rounded-xl border border-[var(--board-line)] px-4 py-3 text-sm font-bold text-[var(--board-ink-dim)]"
-                >
-                  Show all staff ({others.length})
-                </button>
-              )
-            ) : null}
-          </>
+          )
         ) : null}
       </div>
 
@@ -268,13 +242,11 @@ function PersonGrid({
   saving,
   currentId,
   onChoose,
-  showRole = false,
 }: {
   people: AvailableStaffRow[];
   saving: string | null;
   currentId: string | null;
   onChoose: (staffId: string) => void;
-  showRole?: boolean;
 }) {
   if (people.length === 0) return null;
 
@@ -309,8 +281,6 @@ function PersonGrid({
                 <Badge>Move from another section</Badge>
               ) : person.on_other_floor ? (
                 <Badge>On {person.on_other_floor}</Badge>
-              ) : showRole ? (
-                <Badge>{roleNoun(person.role)}</Badge>
               ) : null}
             </button>
           </li>

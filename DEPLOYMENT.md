@@ -4,9 +4,17 @@ Work through this before the first tablet goes on a wall.
 
 ## Must do before go-live
 
-- [ ] **Apply both migrations** in `supabase/migrations/`, in filename order
-      (`supabase db push`, or paste each into the SQL Editor). Both are
+- [ ] **Apply every migration** in `supabase/migrations/`, in filename order
+      (`supabase db push`, or paste each into the SQL Editor). All are
       idempotent and safe to re-run.
+- [ ] **Check for assignments that break the role rule.** 0003 stopped a slot
+      holding somebody who does not hold that role, but deliberately did not
+      rewrite existing rows — who was on duty last Tuesday is a record, not a
+      mistake to tidy up. Anything current or future is worth correcting:
+      ```
+      select * from mismatched_assignments where is_current_or_future;
+      ```
+      The admin rota flags these in place, in red, with the person's real role.
 - [ ] **Confirm the photo bucket is private.** Storage → `staff-photos` →
       Public should be **off**. `0002_storage.sql` sets it, and re-running the
       migration resets it if someone flips it. A public bucket hands every staff

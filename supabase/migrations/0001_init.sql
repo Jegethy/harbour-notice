@@ -100,10 +100,11 @@ create table if not exists public.floors (
 -- ----------------------------------------------------------------------------
 -- staff — the people whose photographs go on the board.
 --
--- `role` is the person's usual role and drives which section of the swap modal
--- lists them first. It does NOT constrain which slot they can fill: a senior
--- carer covering an assistant shift is ordinary, and a board that refused to
--- record what actually happened would just be worked around.
+-- `role` is the person's role. As first written this did NOT constrain which
+-- slot they could fill, on the reasoning that cross-role cover is ordinary.
+-- SUPERSEDED BY 0003_role_restriction.sql: a slot now holds only somebody who
+-- holds that role, enforced in set_slot_at(). Read 0003 before relying on
+-- anything this comment says about cover.
 --
 -- is_active is the normal way someone leaves. Archiving hides them from every
 -- picker and every future shift while keeping the historical rota readable,

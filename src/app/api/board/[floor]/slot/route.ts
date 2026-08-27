@@ -78,7 +78,12 @@ export async function POST(
     );
   }
 
-  const result = data as { outcome?: string; full_name?: string } | null;
+  const result = data as {
+    outcome?: string;
+    full_name?: string;
+    staff_role?: string;
+    slot_role?: string;
+  } | null;
 
   switch (result?.outcome) {
     case "SET":
@@ -88,6 +93,16 @@ export async function POST(
     case "NO_SUCH_STAFF":
       return NextResponse.json(
         { outcome: "ERROR", message: "That person is no longer on the staff list." },
+        { status: 409 },
+      );
+    case "WRONG_ROLE":
+      // The modal only offers eligible people, so reaching this means the staff
+      // list changed underneath an open modal — or something posted directly.
+      return NextResponse.json(
+        {
+          outcome: "ERROR",
+          message: `${result.full_name ?? "That person"} does not hold this role. Close and reopen the board to refresh the list.`,
+        },
         { status: 409 },
       );
     default:

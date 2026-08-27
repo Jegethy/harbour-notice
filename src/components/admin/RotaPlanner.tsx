@@ -20,6 +20,13 @@ import type { RotaSlotRow, StaffRow } from "@/lib/types/database";
  * Deliberately a grid of every slot, including the empty ones — the opposite of
  * the board's rule. Here the empty slots are the work: an administrator is
  * looking for the gaps, where somebody in a corridor is looking for a face.
+ *
+ * Each dropdown offers only people who hold that role, and names the role beside
+ * every person so the pairing is checkable at a glance rather than by memory.
+ * set_slot_at() refuses a mismatch too, so this is a courtesy rather than the
+ * enforcement — see 0003_role_restriction.sql. Assignments made before that rule
+ * existed stay visible, flagged, and selectable, so they can be corrected rather
+ * than silently dropped the next time something else on the shift is edited.
  */
 export function RotaPlanner({
   floors,
@@ -198,65 +205,101 @@ export function RotaPlanner({
         </p>
       ) : (
         <div className="flex flex-col gap-5">
-          {ROLES.map((role) => (
-            <fieldset key={role} className="rounded-xl border border-neutral-dark/10 bg-white p-4 shadow-sm">
-              <legend className="px-2 text-sm font-bold uppercase tracking-[0.1em] text-brand-primary">
-                {ROLE_SPECS[role].label}
-              </legend>
+          {ROLES.map((role) => {
+            const eligible = staff.filter((person) => person.role === role);
 
-              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                {Array.from({ length: ROLE_SPECS[role].capacity }, (_, slotIndex) => {
-                  const filled = slots.find(
-                    (slot) => slot.role === role && slot.slot_index === slotIndex,
-                  );
+            return (
+              <fieldset
+                key={role}
+                className="rounded-xl border border-neutral-dark/10 bg-white p-4 shadow-sm"
+              >
+                <legend className="px-2 text-sm font-bold uppercase tracking-[0.1em] text-brand-primary">
+                  {ROLE_SPECS[role].label}
+                </legend>
 
-                  return (
-                    <label key={slotIndex} className="flex flex-col gap-1">
-                      <span className="text-xs font-semibold text-neutral-dark/50">
-                        {ROLE_SPECS[role].singular} {slotIndex + 1}
-                      </span>
-                      <select
-                        value={filled?.staff_id ?? ""}
-                        disabled={pending}
-                        onChange={(event) =>
-                          assign(role, slotIndex, event.target.value || null)
-                        }
-                        className={`rounded-lg border-2 px-3 py-2.5 font-semibold disabled:opacity-50 ${
-                          filled
-                            ? "border-neutral-dark/20 bg-white text-neutral-dark"
-                            : "border-dashed border-neutral-dark/25 bg-neutral-light text-neutral-dark/50"
-                        }`}
-                      >
-                        <option value="">— empty —</option>
+                {eligible.length === 0 ? (
+                  <p className="mb-3 rounded-lg bg-brand-accent/5 px-3 py-2 text-sm font-semibold text-brand-accent">
+                    Nobody on the staff list is a{" "}
+                    {ROLE_SPECS[role].singular.toLowerCase()}. Add one under Staff before
+                    rostering this section.
+                  </p>
+                ) : null}
 
-                        {/* An archived person who is still on an old shift has
-                            to remain selectable, or changing anything else on
-                            that shift would silently drop them. */}
-                        {filled && !filled.is_active ? (
-                          <option value={filled.staff_id}>
-                            {filled.full_name} (archived)
-                          </option>
-                        ) : null}
+                <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                  {Array.from({ length: ROLE_SPECS[role].capacity }, (_, slotIndex) => {
+                    const filled = slots.find(
+                      (slot) => slot.role === role && slot.slot_index === slotIndex,
+                    );
 
-                        {staff.map((person) => {
-                          const elsewhere = placed.get(person.id);
-                          const isHere = elsewhere?.role === role && elsewhere.slot_index === slotIndex;
+                    // Predates the role rule: somebody is standing in a slot they
+                    // do not hold. Flagged rather than quietly dropped.
+                    const mismatched = Boolean(filled && filled.role !== role);
 
-                          return (
-                            <option key={person.id} value={person.id}>
-                              {person.full_name}
-                              {person.role === role ? "" : ` · ${ROLE_SPECS[person.role].singular}`}
-                              {elsewhere && !isHere ? " · already on this shift" : ""}
+                    return (
+                      <label key={slotIndex} className="flex flex-col gap-1">
+                        <span className="text-xs font-semibold text-neutral-dark/50">
+                          {ROLE_SPECS[role].singular} {slotIndex + 1}
+                        </span>
+
+                        <select
+                          value={filled?.staff_id ?? ""}
+                          disabled={pending}
+                          onChange={(event) =>
+                            assign(role, slotIndex, event.target.value || null)
+                          }
+                          className={`rounded-lg border-2 px-3 py-2.5 font-semibold disabled:opacity-50 ${
+                            mismatched
+                              ? "border-brand-accent bg-brand-accent/5 text-neutral-dark"
+                              : filled
+                                ? "border-neutral-dark/20 bg-white text-neutral-dark"
+                                : "border-dashed border-neutral-dark/25 bg-neutral-light text-neutral-dark/50"
+                          }`}
+                        >
+                          <option value="">— empty —</option>
+
+                          {/* Whoever is in the slot now stays selectable even if
+                              they no longer qualify for it — archived, or placed
+                              before the role rule existed. Dropping them would
+                              blank the control and silently discard the
+                              assignment the next time anything else on this
+                              shift was edited. */}
+                          {filled && (!filled.is_active || mismatched) ? (
+                            <option value={filled.staff_id}>
+                              {filled.full_name} · {ROLE_SPECS[filled.role].singular}
+                              {!filled.is_active ? " (archived)" : ""}
+                              {mismatched ? " — does not hold this role" : ""}
                             </option>
-                          );
-                        })}
-                      </select>
-                    </label>
-                  );
-                })}
-              </div>
-            </fieldset>
-          ))}
+                          ) : null}
+
+                          {eligible.map((person) => {
+                            const elsewhere = placed.get(person.id);
+                            const isHere =
+                              elsewhere?.role === role &&
+                              elsewhere.slot_index === slotIndex;
+
+                            return (
+                              <option key={person.id} value={person.id}>
+                                {person.full_name} · {ROLE_SPECS[person.role].singular}
+                                {elsewhere && !isHere ? " · already on this shift" : ""}
+                              </option>
+                            );
+                          })}
+                        </select>
+
+                        {mismatched && filled ? (
+                          <span className="text-xs font-semibold text-brand-accent">
+                            {filled.full_name} is a{" "}
+                            {ROLE_SPECS[filled.role].singular.toLowerCase()}, not a{" "}
+                            {ROLE_SPECS[role].singular.toLowerCase()}. Pick a replacement.
+                          </span>
+                        ) : null}
+                      </label>
+                    );
+                  })}
+                </div>
+              </fieldset>
+            );
+          })}
         </div>
       )}
     </section>

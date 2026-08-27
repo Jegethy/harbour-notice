@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { deleteStaffAction, setStaffActiveAction } from "@/app/admin/actions";
 import { StaffDialog } from "@/components/admin/StaffDialog";
-import { ROLE_SPECS, initialsOf } from "@/lib/board/roles";
+import { ROLES, ROLE_SPECS, initialsOf } from "@/lib/board/roles";
 import { photoUrl } from "@/lib/board/photo";
 import type { StaffRow } from "@/lib/types/database";
 
@@ -108,71 +108,97 @@ export function StaffTable({ staff }: { staff: StaffRow[] }) {
             : "No staff yet. Add the nurses, senior carers and care assistants who work on these floors."}
         </p>
       ) : (
-        <ul className="grid gap-3 sm:grid-cols-2">
-          {shown.map((person) => (
-            <li
-              key={person.id}
-              className="flex items-center gap-4 rounded-xl border border-neutral-dark/10 bg-white p-3 shadow-sm"
-            >
-              <Avatar person={person} />
+        /* Grouped by role, in board order rather than alphabetically. A role is
+           now what decides which slots somebody can fill, so "how many senior
+           carers do we actually have" is the question this page is opened to
+           answer — and a flat A-to-Z list makes it a counting exercise. */
+        <div className="flex flex-col gap-6">
+          {ROLES.map((role) => {
+            const people = shown.filter((person) => person.role === role);
+            if (people.length === 0) return null;
 
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-lg font-bold text-neutral-dark">
-                  {person.full_name}
-                </p>
-                <p className="text-sm text-neutral-dark/60">
-                  {ROLE_SPECS[person.role].singular}
-                  {person.photo_path ? "" : " · no photo"}
-                </p>
-              </div>
+            return (
+              <section key={role}>
+                <h2 className="mb-2 flex items-baseline gap-2 border-b-2 border-neutral-dark/10 pb-1.5">
+                  <span className="text-sm font-bold uppercase tracking-[0.1em] text-brand-primary">
+                    {ROLE_SPECS[role].label}
+                  </span>
+                  <span className="text-xs font-semibold tabular-nums text-neutral-dark/45">
+                    {people.length}
+                  </span>
+                </h2>
 
-              <div className="flex shrink-0 flex-col items-end gap-1.5">
-                {person.is_active ? (
-                  <>
-                    <button
-                      type="button"
-                      disabled={pending}
-                      onClick={() => {
-                        setEditing(person);
-                        setDialogOpen(true);
-                      }}
-                      className="rounded-lg border-2 border-neutral-dark/20 px-3 py-1.5 text-sm font-bold text-neutral-dark disabled:opacity-50"
+                <ul className="grid gap-3 sm:grid-cols-2">
+                  {people.map((person) => (
+                    <li
+                      key={person.id}
+                      className="flex items-center gap-4 rounded-xl border border-neutral-dark/10 bg-white p-3 shadow-sm"
                     >
-                      Edit
-                    </button>
-                    <button
-                      type="button"
-                      disabled={pending}
-                      onClick={() => setActive(person, false)}
-                      className="text-xs font-bold text-neutral-dark/60 underline disabled:opacity-50"
-                    >
-                      Archive
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <button
-                      type="button"
-                      disabled={pending}
-                      onClick={() => setActive(person, true)}
-                      className="rounded-lg border-2 border-status-ok px-3 py-1.5 text-sm font-bold text-status-ok disabled:opacity-50"
-                    >
-                      Restore
-                    </button>
-                    <button
-                      type="button"
-                      disabled={pending}
-                      onClick={() => setDeleting(person)}
-                      className="text-xs font-bold text-brand-accent underline disabled:opacity-50"
-                    >
-                      Delete permanently
-                    </button>
-                  </>
-                )}
-              </div>
-            </li>
-          ))}
-        </ul>
+                      <Avatar person={person} />
+
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-lg font-bold text-neutral-dark">
+                          {person.full_name}
+                        </p>
+                        {/* The role is the section heading now, so repeating it
+                            here would be noise. What is worth saying is the
+                            thing that is missing. */}
+                        {person.photo_path ? null : (
+                          <p className="text-sm text-neutral-dark/60">No photo</p>
+                        )}
+                      </div>
+
+                      <div className="flex shrink-0 flex-col items-end gap-1.5">
+                        {person.is_active ? (
+                          <>
+                            <button
+                              type="button"
+                              disabled={pending}
+                              onClick={() => {
+                                setEditing(person);
+                                setDialogOpen(true);
+                              }}
+                              className="rounded-lg border-2 border-neutral-dark/20 px-3 py-1.5 text-sm font-bold text-neutral-dark disabled:opacity-50"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              type="button"
+                              disabled={pending}
+                              onClick={() => setActive(person, false)}
+                              className="text-xs font-bold text-neutral-dark/60 underline disabled:opacity-50"
+                            >
+                              Archive
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <button
+                              type="button"
+                              disabled={pending}
+                              onClick={() => setActive(person, true)}
+                              className="rounded-lg border-2 border-status-ok px-3 py-1.5 text-sm font-bold text-status-ok disabled:opacity-50"
+                            >
+                              Restore
+                            </button>
+                            <button
+                              type="button"
+                              disabled={pending}
+                              onClick={() => setDeleting(person)}
+                              className="text-xs font-bold text-brand-accent underline disabled:opacity-50"
+                            >
+                              Delete permanently
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            );
+          })}
+        </div>
       )}
 
       <StaffDialog

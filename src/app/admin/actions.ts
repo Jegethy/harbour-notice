@@ -492,10 +492,19 @@ export async function setRotaSlotAction(formData: FormData): Promise<RotaResult>
     return { error: "Could not save that change. Please try again." };
   }
 
-  const result = data as { outcome?: string } | null;
+  const result = data as { outcome?: string; full_name?: string } | null;
 
   if (result?.outcome === "NO_SUCH_STAFF") {
     return { error: "That person is no longer on the staff list." };
+  }
+
+  if (result?.outcome === "WRONG_ROLE") {
+    // The dropdowns only offer people who hold the role, so this means the
+    // staff list changed in another tab — or somebody posted to the action
+    // directly, which is exactly why the rule lives in the database.
+    return {
+      error: `${result.full_name ?? "That person"} does not hold that role. Refresh the page and try again.`,
+    };
   }
 
   if (result?.outcome !== "SET" && result?.outcome !== "CLEARED") {
@@ -571,7 +580,7 @@ export async function copyPreviousShiftAction(formData: FormData): Promise<Actio
       continue;
     }
 
-    const { error } = await supabase.rpc("set_slot_at", {
+    const { data, error } = await supabase.rpc("set_slot_at", {
       p_floor_slug: floorSlug,
       p_shift_date: shiftDate,
       p_shift: shift as Shift,
@@ -580,20 +589,38 @@ export async function copyPreviousShiftAction(formData: FormData): Promise<Actio
       p_staff_id: slot.staff_id,
     });
 
-    if (!error) copied += 1;
+    // The outcome matters, not just the absence of a transport error: a source
+    // shift recorded before the role rule can contain somebody who no longer
+    // qualifies for the slot they were in, and set_slot_at refuses that without
+    // failing. Counting it as copied would report work that did not happen.
+    if (!error && (data as { outcome?: string } | null)?.outcome === "SET") {
+      copied += 1;
+    } else {
+      skipped += 1;
+    }
   }
 
   revalidatePath("/admin/rota");
   revalidatePath("/admin");
 
+  // Skipping now has two causes — archived, and no longer holding that role —
+  // so the message says what happened rather than naming one of them and being
+  // wrong half the time.
+  const skippedNote = `${skipped} skipped: no longer on the staff list, or no longer holds that role.`;
+
   if (copied === 0) {
-    return { error: "Nothing to copy — every slot is already filled." };
+    return {
+      error:
+        skipped > 0
+          ? `Nothing was copied. ${skippedNote}`
+          : "Nothing to copy — every slot is already filled.",
+    };
   }
 
   return {
     notice:
       skipped > 0
-        ? `Copied ${copied} from the previous shift. ${skipped} skipped — no longer on the staff list.`
+        ? `Copied ${copied} from the previous shift. ${skippedNote}`
         : `Copied ${copied} from the previous shift.`,
   };
 }

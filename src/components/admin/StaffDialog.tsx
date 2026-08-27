@@ -127,7 +127,7 @@ export function StaffDialog({
         </label>
 
         <fieldset className="flex flex-col gap-2">
-          <legend className="mb-1 text-sm font-semibold">Usual role</legend>
+          <legend className="mb-1 text-sm font-semibold">Role</legend>
 
           <div className="flex flex-col gap-2">
             {ROLES.map((role) => (
@@ -150,9 +150,9 @@ export function StaffDialog({
           </div>
 
           <p className="text-xs text-neutral-dark/60">
-            This decides which section of the board lists them first. It does not
-            stop them covering another role — the swap screen can still find
-            them under &ldquo;Show all staff&rdquo;.
+            This decides which positions they can be given, on the boards and in
+            the rota. Somebody set as a Care Assistant cannot be put in the Nurse
+            in Charge slot.
           </p>
         </fieldset>
 

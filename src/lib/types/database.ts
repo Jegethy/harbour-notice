@@ -22,7 +22,7 @@ export type FloorRow = {
 export type StaffRow = {
   id: string;
   full_name: string;
-  /** Usual role. Does not restrict which slot they can fill — see 0001_init.sql. */
+  /** Decides which slots they can fill. Enforced in set_slot_at() — see 0003. */
   role: Role;
   /** Object key in the private `staff-photos` bucket. NULL = show initials. */
   photo_path: string | null;
@@ -66,15 +66,19 @@ export type BoardSnapshot = {
   slots: BoardSlot[];
 };
 
-/** A row in the swap modal. */
+/**
+ * A row in the swap modal.
+ *
+ * Only ever people who hold the role being filled — available_staff() filters
+ * on it, so the tablet is never sent the rest of the staff roll. See
+ * 0003_role_restriction.sql.
+ */
 export type AvailableStaffRow = {
   staff_id: string;
   full_name: string;
   role: Role;
   has_photo: boolean;
   photo_updated_at: string | null;
-  /** True when this is their usual role; used to sort and to group the list. */
-  matches_role: boolean;
   /** Already somewhere on this board this shift — offered as a move, not a duplicate. */
   on_this_floor: boolean;
   /** Names of other floors they are already on tonight, or null. */

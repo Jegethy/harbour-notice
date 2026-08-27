@@ -48,7 +48,9 @@ harbour-notice/
 ├── supabase/migrations/
 │   ├── 0001_init.sql            Schema, RLS, and every RPC. Read this first —
 │   │                            the design decisions are documented in it.
-│   └── 0002_storage.sql         The private staff-photos bucket.
+│   ├── 0002_storage.sql         The private staff-photos bucket.
+│   └── 0003_role_restriction.sql  A slot only holds somebody who holds that
+│                                role. Supersedes a decision made in 0001.
 ├── scripts/hash-pin.ts          Set the very first PIN without a browser.
 └── src/
     ├── proxy.ts                 Session refresh + /admin redirects (Next 16
@@ -91,9 +93,10 @@ harbour-notice/
 Four tables. The full reasoning is in `supabase/migrations/0001_init.sql`.
 
 - **`floors`** — one tablet, one board, one floor. `slug` is the URL.
-- **`staff`** — name, usual role, photo, `is_active`. The role decides which
-  section lists them first; it does not stop a senior carer covering an
-  assistant shift.
+- **`staff`** — name, role, photo, `is_active`. The role decides which slots the
+  person can fill, and it is enforced in `set_slot_at()` rather than only in the
+  UI: a board asserting that a care assistant is Nurse in Charge is stating
+  something untrue about who is clinically accountable for the floor.
 - **`shift_assignments`** — `(floor, shift_date, shift, role, slot_index) →
   staff`. This is both the rota and the live board.
 - **`app_settings`** — one row, holding the scrypt hash of the swap PIN.
@@ -136,8 +139,8 @@ Two consequences worth knowing before changing anything:
 
 ## Getting started
 
-1. **Create a Supabase project**, then run both migrations in filename order —
-   `supabase db push`, or paste each into the SQL Editor. Both are idempotent.
+1. **Create a Supabase project**, then run every migration in filename order —
+   `supabase db push`, or paste each into the SQL Editor. All are idempotent.
 
 2. **Copy the environment file** and fill it in:
 
