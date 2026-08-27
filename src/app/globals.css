@@ -1,0 +1,128 @@
+@import "tailwindcss";
+
+/*
+ * Harbour Care Centre — brand palette.
+ *
+ * Tailwind v4 is configured in CSS rather than tailwind.config.ts: anything
+ * declared in @theme becomes a utility, so --color-brand-primary gives you
+ * bg-brand-primary, text-brand-primary, border-brand-primary and so on.
+ *
+ * Shared with the visitor kiosk so the two screens in the building read as one
+ * system. Measured contrast for the pairs actually in use:
+ *   cream on maroon   #F7E8D0 on #7C1B1B -> 8.6:1 (AAA)
+ *   dim on maroon     #D9C6AB on #7C1B1B -> 6.2:1 (AA)
+ *   maroon on cream   #7C1B1B on #F7E8D0 -> 8.6:1 (AAA)
+ *   white on red      #FFFFFF on #C8102E -> 5.9:1 (AA)
+ *
+ *   red on maroon     #C8102E on #7C1B1B -> 1.8:1 (FAILS)
+ *
+ * That last pair is why an alert on the board is a cream panel with maroon
+ * text rather than a red one: brand red on brand maroon is nearly invisible,
+ * and the board is read from across a corridor.
+ */
+@theme {
+  --color-brand-primary: #7c1b1b;
+  --color-brand-cream: #f7e8d0;
+  --color-brand-accent: #c8102e;
+  --color-neutral-dark: #1f1f1f;
+  --color-neutral-light: #faf7f2;
+
+  /* Derived steps for depth, pressed states and dividers. */
+  --color-brand-deep: #6b1c1d;
+  --color-brand-light: #a33739;
+  --color-cream-dim: #d9c6ab;
+
+  /* Admin status only — deliberately outside the brand. */
+  --color-status-ok: #15803d;
+  --color-status-bad: #b91c1c;
+
+  /*
+   * Night shift.
+   *
+   * The board changes colour at 20:00, and this is not decoration. Someone
+   * walking onto the floor mid-shift reads the tint before they read a word of
+   * it, so day and night can never be confused at a glance — and a board still
+   * showing the day team at 21:00 becomes obvious from the far end of the
+   * corridor rather than requiring anyone to check the names.
+   *
+   * Deep indigo, chosen to sit at similar luminance to the maroon so both
+   * schemes keep the same cream text contrast.
+   */
+  --color-night-primary: #1e2a4a;
+  --color-night-deep: #16203a;
+  --color-night-light: #35456f;
+}
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  background: var(--color-neutral-light);
+  color: var(--color-neutral-dark);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+/*
+ * Board hardening.
+ *
+ * Applied via <body data-board> on the board routes only, so the admin panel
+ * keeps normal browser behaviour (text selection, zoom, context menus).
+ */
+body[data-board] {
+  background: var(--color-brand-primary);
+  overscroll-behavior: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  /* Kills double-tap-to-zoom, which otherwise fires on rapid taps. */
+  touch-action: manipulation;
+  overflow: hidden;
+  height: 100dvh;
+}
+
+body[data-board] * {
+  /* The only text entry on the board is the PIN pad, which draws its own
+     display. A blinking native caret invites a tap on the system keyboard. */
+  caret-color: transparent;
+}
+
+/*
+ * A name that is too long for its card shrinks rather than wrapping to three
+ * lines or being clipped. `cqw` is a share of the card's own width, so the
+ * same rule works for the full-width nurse card and a third-width assistant.
+ */
+.name-fit {
+  container-type: inline-size;
+}
+
+@keyframes board-pop {
+  from {
+    transform: scale(0.96);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes board-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
