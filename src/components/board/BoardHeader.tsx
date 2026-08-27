@@ -39,11 +39,11 @@ export function BoardHeader({
 
   return (
     <header className="flex shrink-0 items-center gap-4 pb-3">
-      <BrandLogo className="h-12 w-auto shrink-0 sm:h-14" />
+      <BrandLogo className="h-12 shrink-0 sm:h-14" />
 
-      <h1 className="min-w-0 flex-1 truncate text-2xl font-bold text-[var(--board-ink)] sm:text-3xl">
-        {floorName}
-      </h1>
+      {/* Pushes everything after it to the right, so the logo anchors the left
+          edge and the floor name the right. */}
+      <span className="flex-1" />
 
       {connection === "stale" ? <StaleWarning /> : null}
 
@@ -57,6 +57,10 @@ export function BoardHeader({
           <span className="tabular-nums opacity-70">{formatCountdown(unlockedSeconds)}</span>
         </button>
       ) : null}
+
+      <h1 className="min-w-0 truncate text-right text-2xl font-bold text-[var(--board-ink)] sm:text-3xl">
+        {floorName}
+      </h1>
     </header>
   );
 }

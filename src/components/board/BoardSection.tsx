@@ -74,10 +74,15 @@ export function BoardSection({
     >
       <SectionHeading role={role} filled={filled.length} />
 
-      {/* --card-max caps how wide any one card may get; see globals.css. */}
+      {/* Both caps on how wide a card may get; see globals.css. */}
       <div
         className="board-row flex min-h-0 flex-1 items-stretch justify-center"
-        style={{ "--card-max": spec.maxCardWidth } as React.CSSProperties}
+        style={
+          {
+            "--card-max": spec.maxCardWidth,
+            "--card-ratio": spec.maxCardRatio,
+          } as React.CSSProperties
+        }
       >
         {filled.map((slot) => (
           <StaffCard
@@ -109,9 +114,17 @@ export interface SlotTarget {
   current: BoardSlot | null;
 }
 
+/**
+ * Centred, with a hairline underneath separating it from the faces.
+ *
+ * The rule does the work of the gap: without it the heading floats between two
+ * rows of photographs and reads as belonging to whichever it happens to sit
+ * nearer. Kept at 22% cream so it separates without becoming a feature —
+ * anything stronger draws the eye to the furniture rather than the people.
+ */
 function SectionHeading({ role, filled }: { role: Role; filled: number }) {
   return (
-    <h2 className="mb-1.5 shrink-0 px-0.5 text-sm font-bold uppercase tracking-[0.12em] text-[var(--board-ink-dim)] sm:text-base">
+    <h2 className="mb-2 shrink-0 border-b border-[var(--board-line)] pb-1.5 text-center text-sm font-bold uppercase tracking-[0.12em] text-[var(--board-ink-dim)] sm:text-base">
       {sectionHeading(role, filled)}
     </h2>
   );

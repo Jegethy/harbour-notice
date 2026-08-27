@@ -1,84 +1,66 @@
 "use client";
 
-import Image from "next/image";
 import { useState } from "react";
 
 /**
- * The centre logo, on the board header.
+ * The centre's logo, top-left of every board.
  *
- * logo_nobg.png is transparent with a cream wordmark and a red leaf — it was
- * drawn for a dark background, so it sits directly on both the maroon day board
- * and the indigo night one with no panel behind it. The cream carries the
- * contrast; the red leaf is a mark rather than text, so the low red-on-maroon
- * ratio is not carrying meaning.
+ * **To change the logo, replace `public/logo-board.png`.** Nothing else needs
+ * touching: the artwork is drawn with `object-fit: contain` inside a fixed
+ * height, so any shape or resolution fits without measuring it first. That is
+ * deliberately unlike the visitor kiosk's version, which hard-codes the pixel
+ * bounds of one specific export and silently clips anything else.
  *
- * The export has generous transparent margins — the wordmark occupies roughly
- * the middle half of the canvas. Rendered as a plain <img> those margins are
- * still layout, so the logo reserves far more vertical space than it appears
- * to use and everything below it looks pushed down.
+ * The mark sits on a cream panel rather than straight on the board. The supplied
+ * artwork is red and gold on white, and brand red on brand maroon measures
+ * 1.8:1 — close to invisible at corridor distance, and worse again on the indigo
+ * night board. A light panel keeps the brand colours as drawn and gives the same
+ * contrast under both palettes, which is what a logo needs from a surface it
+ * does not control.
  *
- * So the artwork is cropped in CSS: the wrapper takes the aspect ratio of the
- * visible artwork, and the image is positioned inside it so the transparent
- * border falls outside. The element's box is then the logo you can actually
- * see, and normal spacing behaves normally.
- *
- * ARTWORK is measured from the file, not guessed. If you replace the artwork,
- * re-measure the bounding box of the visible pixels and update these numbers,
- * or the crop will clip the wordmark.
+ * If you swap in artwork that is already light-on-transparent, set PANEL to
+ * false and it will sit directly on the board.
  */
-const ARTWORK = {
-  imageWidth: 1053,
-  imageHeight: 1024,
-  x: 210,
-  y: 211,
-  width: 628,
-  height: 562,
-};
 
-const percent = (value: number) => `${(value * 100).toFixed(3)}%`;
+const LOGO_SRC = "/logo-board.png";
+const PANEL = true;
 
 export function BrandLogo({ className = "" }: { className?: string }) {
   const [failed, setFailed] = useState(false);
 
+  /*
+   * A missing or unreadable file falls back to the wordmark set in type. The
+   * board is on a wall all day: a broken-image icon reads as a fault in the
+   * system, where the name set in the brand's own cream reads as a design.
+   */
   if (failed) {
     return (
-      <div className={`flex flex-col justify-center text-center ${className}`}>
-        <p className="font-serif text-5xl font-bold leading-none tracking-tight text-brand-cream">
+      <span className={`flex flex-col justify-center leading-none ${className}`}>
+        <span className="font-serif text-xl font-bold tracking-tight text-[var(--board-ink)] sm:text-2xl">
           Harbour
-        </p>
-        <p className="mt-3 text-lg font-semibold uppercase tracking-[0.28em] text-brand-cream">
+        </span>
+        <span className="mt-0.5 text-[0.6rem] font-semibold uppercase tracking-[0.28em] text-[var(--board-ink-dim)]">
           Care Centre
-        </p>
-        <p className="mt-1 text-sm uppercase tracking-[0.34em] text-cream-dim">Portishead</p>
-      </div>
+        </span>
+      </span>
     );
   }
 
   return (
     <span
-      className={`relative block overflow-hidden ${className}`}
-      style={{ aspectRatio: `${ARTWORK.width} / ${ARTWORK.height}` }}
+      className={`flex items-center justify-center ${
+        PANEL ? "rounded-xl bg-brand-cream px-3 py-2" : ""
+      } ${className}`}
     >
-      <Image
-        src="/logo_nobg.png"
-        alt="Harbour Care Centre, Portishead"
-        width={ARTWORK.imageWidth}
-        height={ARTWORK.imageHeight}
-        priority
-        /*
-         * Served as-is. This is the brand mark on a screen that is lit all day,
-         * and a lossy re-encode softens the serif wordmark at the size it is
-         * drawn. 180KB, fetched once and cached.
-         */
-        unoptimized
+      {/* eslint-disable-next-line @next/next/no-img-element -- the file is
+          swappable by hand and its dimensions are deliberately not known here,
+          which is exactly what next/image needs declared up front. */}
+      <img
+        src={LOGO_SRC}
+        alt="Harbour Care Centre"
         onError={() => setFailed(true)}
-        className="absolute max-w-none"
-        style={{
-          width: percent(ARTWORK.imageWidth / ARTWORK.width),
-          height: "auto",
-          left: percent(-ARTWORK.x / ARTWORK.width),
-          top: percent(-ARTWORK.y / ARTWORK.height),
-        }}
+        className="h-full w-auto object-contain"
+        draggable={false}
       />
     </span>
   );

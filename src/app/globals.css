@@ -100,18 +100,31 @@ body[data-board] * {
 /*
  * One section of the board: always a single row, always centred.
  *
- * Cards divide the row equally, except that none may exceed `--card-max` of its
- * width. That upper bound is the whole trick. Without it a section holding one
- * person stretches that card across the full width of the board, and
- * `object-fit: cover` crops the photograph down to a letterbox strip of forehead
- * — which is exactly what a wide desktop window did to every face on it.
+ * A card is bounded three ways, and takes the smallest:
  *
- * With it, a lone senior carer takes half the row and a lone care assistant a
- * third; the remainder stays empty and the cards stay roughly portrait. Once a
- * section holds enough people the cap stops binding and they simply share the
- * row. A tall, narrow crop is fine — it is a portrait. A wide one is not.
+ *   1. its equal share of the row, from flexbox;
+ *   2. `--card-max`, a share of the row's width — so a section holding one
+ *      person does not stretch that card across the whole board;
+ *   3. `--card-ratio` times the row's own height — so a card cannot be wider
+ *      than it is tall by more than that much, whatever the window is doing.
+ *
+ * The third is the one that matters most and the one that was missing. Bounds 1
+ * and 2 are both widths, and neither knows how tall the row is; on a short, wide
+ * window the row is short, the card stays wide, and `object-fit: cover` crops
+ * every photograph to a letterbox strip of forehead. Which is why the board only
+ * looked right in a tall, narrow window.
+ *
+ * `container-type: size` is what lets a card measure its own row's height with
+ * cqh. It requires the row's height to be settled without reference to its
+ * contents, which it is — every section's height comes from flex distribution of
+ * the board's own height. The max() floor is a guard: if that ever stops being
+ * true, cqh resolves to zero and, without it, every card on the wall would
+ * vanish rather than merely look wrong.
+ *
+ * A tall, narrow crop is fine — that is a portrait. A wide one is not.
  */
 .board-row {
+  container-type: size;
   --row-gap: 0.5rem;
   gap: var(--row-gap);
 }
@@ -125,7 +138,10 @@ body[data-board] * {
 .board-row > * {
   flex: 1 1 0;
   min-width: 0;
-  max-width: var(--card-max);
+  max-width: min(
+    var(--card-max),
+    max(4rem, calc(var(--card-ratio) * 100cqh))
+  );
 }
 
 @keyframes board-pop {

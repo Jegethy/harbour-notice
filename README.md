@@ -59,7 +59,12 @@ harbour-notice/
 │   ├── 0003_role_restriction.sql  A slot only holds somebody who holds that
 │   │                            role. Supersedes a decision made in 0001.
 │   └── 0004_role_hierarchy.sql  Refines 0003: cover flows downward, never up.
-├── scripts/hash-pin.ts          Set the very first PIN without a browser.
+├── public/logo-board.png        The logo shown on every board. Replace this
+│                                file to change it; nothing in code needs editing.
+├── scripts/
+│   ├── hash-pin.ts              Set the very first PIN without a browser.
+│   └── check-layout.ts          `npm run check:layout` — proves every card comes
+│                                out portrait on every screen shape.
 └── src/
     ├── proxy.ts                 Session refresh + /admin redirects (Next 16
     │                            renamed `middleware` to `proxy`).
@@ -192,6 +197,19 @@ Two consequences worth knowing before changing anything:
 
 Going live on a wall: see [DEPLOYMENT.md](DEPLOYMENT.md).
 
+## The logo
+
+The board shows `public/logo-board.png`, drawn with `object-fit: contain` at a
+fixed height, so **any shape or resolution works — just replace the file**. It
+sits on a cream panel because the supplied artwork is red and gold on white, and
+brand red on brand maroon measures 1.8:1, which is close to invisible from down
+a corridor. If you swap in artwork that is already light-on-transparent, set
+`PANEL = false` in `src/components/board/BrandLogo.tsx` and it will sit directly
+on the board.
+
+If the file is missing the board falls back to the wordmark set in type, which
+is on-brand and deliberate-looking rather than a broken-image icon.
+
 ## Changing the section sizes
 
 The capacities — 1 nurse, 3 seniors, 5 assistants — live in **two** places that
@@ -203,6 +221,18 @@ must agree:
 Change one without the other and the database's CHECK constraint rejects the
 write. That is the intended way to find out.
 
-`ROLE_SPECS` also carries `perRow` (how many cards before wrapping) and `weight`
-(each section's share of the screen). Nothing else needs touching — the layout
-has no breakpoints and no fixed sizes.
+`ROLE_SPECS` also carries the layout numbers: `maxCardWidth` and `maxCardRatio`
+(the two caps on how large a card may get) and `weight` (each section's share of
+the screen height). There are no breakpoints and no fixed pixel sizes.
+
+Those numbers interact in ways that are not obvious — widening one section can
+make the Nurse in Charge come out narrower than a care assistant, and shortening
+a section turns its photographs landscape. After changing any of them run:
+
+```bash
+npm run check:layout
+```
+
+which recomputes every card across a spread of real screen shapes and fails if a
+photograph would come out wider than it is tall, or if the size hierarchy
+inverts.

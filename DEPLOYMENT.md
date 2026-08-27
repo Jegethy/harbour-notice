@@ -36,6 +36,9 @@ Work through this before the first tablet goes on a wall.
       un-pairs every tablet on it.
 - [ ] **Add staff and photographs.** Head-and-shoulders shots; they are resized
       in the browser on upload, so photographing everyone on a phone is fine.
+- [ ] **Put the centre's logo at `public/logo-board.png`.** Any shape or size —
+      it is scaled to fit. Without it the board falls back to the wordmark in
+      type, which looks deliberate but is not the logo.
 - [ ] **Serve over HTTPS.** Supabase Auth cookies and the device cookie both
       depend on it (`secure` is set in production).
 
@@ -47,6 +50,9 @@ Work through this before the first tablet goes on a wall.
 - [ ] A floor with one nurse and two assistants fills the screen, with no
       scrolling and no empty placeholder tiles.
 - [ ] **Five care assistants stay on one row** and do not wrap.
+- [ ] **Every photograph is portrait, not letterboxed**, at the tablet's own
+      resolution. `npm run check:layout` predicts this for a spread of screen
+      shapes; the tablet on the wall is the one that counts.
 - [ ] Nothing at the top of the board but the logo and the floor name — no
       clock, no shift badge, no counts.
 - [ ] On a wide desktop window the board renders as a centred portrait panel

@@ -48,11 +48,32 @@ export interface RoleSpec {
    */
   maxCardWidth: string;
   /**
+   * The widest one card may be relative to its own height, as width ÷ height.
+   *
+   * The width cap above is a share of the row, which says nothing about how tall
+   * the row happens to be. On a short, wide window a section is short, so a card
+   * capped only by width is a letterbox and `object-fit: cover` crops the
+   * photograph to a strip — which is why the board only looked right in a tall,
+   * narrow window. This second cap is measured against the row's own height, so
+   * a card stays portrait whatever shape the screen is; the leftover width just
+   * becomes margin either side.
+   *
+   * Values are the card including its name bar, so the photograph above it comes
+   * out a little more portrait again. The Nurse in Charge is the widest allowed,
+   * which together with the tallest row keeps that card the largest on the wall.
+   */
+  maxCardRatio: number;
+  /**
    * Share of leftover vertical space this section takes.
    *
    * The Nurse in Charge is the one face someone crossing the floor needs to
-   * find, so the section is weighted to stay largest even when the board is
+   * find, so that section is weighted to stay largest even when the board is
    * nearly empty.
+   *
+   * The three are closer together than the old 5/3/4 because the ratio cap now
+   * turns height into width: a section given too little height produces cards
+   * narrower than the ones below it, and the hierarchy inverts. 10/8/7 keeps
+   * nurse wider than senior wider than assistant at every window shape tried.
    */
   weight: number;
 }
@@ -64,7 +85,8 @@ export const ROLE_SPECS: Record<Role, RoleSpec> = {
     capacity: 1,
     rank: 3,
     maxCardWidth: "66%",
-    weight: 5,
+    maxCardRatio: 0.85,
+    weight: 11,
   },
   SENIOR_CARER: {
     label: "Senior Carers",
@@ -72,7 +94,8 @@ export const ROLE_SPECS: Record<Role, RoleSpec> = {
     capacity: 3,
     rank: 2,
     maxCardWidth: "48%",
-    weight: 3,
+    maxCardRatio: 0.62,
+    weight: 8,
   },
   CARE_ASSISTANT: {
     label: "Care Assistants",
@@ -80,7 +103,8 @@ export const ROLE_SPECS: Record<Role, RoleSpec> = {
     capacity: 5,
     rank: 1,
     maxCardWidth: "32%",
-    weight: 4,
+    maxCardRatio: 0.52,
+    weight: 7,
   },
 };
 
